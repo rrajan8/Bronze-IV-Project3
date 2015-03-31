@@ -40,7 +40,7 @@ NS_LOG_COMPONENT_DEFINE ("WirelessAnimationExample");
 int 
 main (int argc, char *argv[])
 {
-  uint32_t nWifi = 50;
+  uint32_t nWifi = 10;
   //double mWatts = 1;
   CommandLine cmd;
   cmd.AddValue ("nWifi", "Number of wifi STA devices", nWifi);
@@ -57,13 +57,16 @@ main (int argc, char *argv[])
 
   YansWifiChannelHelper channel = YansWifiChannelHelper::Default ();
   YansWifiPhyHelper phy = YansWifiPhyHelper::Default ();
-  //phy.SetAttribute("TxPowerStart", DoubleValue(10));
-  //phy.SetAttribute("TxPowerEnd", DoubleValue(10));
+  
+  phy.Set("TxPowerStart", DoubleValue(100));
+  phy.Set("TxPowerEnd", DoubleValue(100));
   
   phy.SetChannel (channel.Create ());
 
   WifiHelper wifi = WifiHelper::Default ();
-  wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+  // wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                "DataMode", StringValue ("OfdmRate54Mbps"));
 
   NqosWifiMacHelper mac = NqosWifiMacHelper::Default ();
 
@@ -74,8 +77,8 @@ main (int argc, char *argv[])
 
   NetDeviceContainer staDevices;
   staDevices = wifi.Install (phy, mac, wifiStaNodes);
-  mac.SetType ("ns3::ApWifiMac",
-               "Ssid", SsidValue (ssid));
+  //mac.SetType ("ns3::ApWifiMac",
+               //"Ssid", SsidValue (ssid));
 
   //NetDeviceContainer apDevices;
   //apDevices = wifi.Install (phy, mac, wifiApNode);
@@ -116,8 +119,8 @@ main (int argc, char *argv[])
 //                                  "GridWidth", UintegerValue (10),
 //                                  "LayoutType", StringValue ("RowFirst"));
   mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
-                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=1000.0]"),
-                                 "Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=1000.0]"));
+                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"),
+                                 "Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"));
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (wifiStaNodes);
   //mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
@@ -163,9 +166,9 @@ main (int argc, char *argv[])
    serverApps.Start (Seconds (1.0));
    serverApps.Stop (Seconds (15.0));
    UdpEchoClientHelper echoClient (wifiStaNodes.Get(1)->GetDevice(0)->GetAddress(), 9);
-//   echoClient.SetAttribute ("MaxPackets", UintegerValue (10));
-//   echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.)));
-//   echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
+echoClient.SetAttribute ("MaxPackets", UintegerValue (10));
+echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.)));
+echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
   ApplicationContainer clientApps = echoClient.Install (wifiStaNodes);
   clientApps.Start (Seconds (2.0));
   clientApps.Stop (Seconds (15.0));
