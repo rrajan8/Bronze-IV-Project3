@@ -32,6 +32,7 @@
 #include "ns3/simple-device-energy-model.h"
 
 #include <string>
+ #include <math.h> 
 
 
 
@@ -42,11 +43,16 @@ NS_LOG_COMPONENT_DEFINE ("WirelessAnimationExample");
 int 
 main (int argc, char *argv[])
 {
-  uint32_t nWifi = 10;
-  //double mWatts = 1;
+  uint32_t nWifi = 50;
+  double TxPower = 1.0;
+  double trafficIntesity = 0.1;
+  std::string route_protocol("AODV");
+  
   CommandLine cmd;
   cmd.AddValue ("nWifi", "Number of wifi STA devices", nWifi);
-  
+  cmd.AddValue("TrafficIntesity", "Demand to Bandwidth Ratio", trafficIntesity);
+  cmd.AddValue("Routing_protocol", "AODV or OLSR", route_protocol);
+  cmd.AddValue("Transmission Power", "Power in mWatts", TxPower);    
 
   cmd.Parse (argc,argv);
   NodeContainer allNodes;
@@ -58,13 +64,13 @@ main (int argc, char *argv[])
   YansWifiChannelHelper channel = YansWifiChannelHelper::Default ();
   YansWifiPhyHelper phy = YansWifiPhyHelper::Default ();
   
-  phy.Set("TxPowerStart", DoubleValue(1));
-  phy.Set("TxPowerEnd", DoubleValue(1));
+  phy.Set("TxPowerStart", DoubleValue(10.0*log10(TxPower)));
+  phy.Set("TxPowerEnd", DoubleValue(10.0*log10(TxPower)));
   
   phy.SetChannel (channel.Create ());
 
   WifiHelper wifi = WifiHelper::Default ();
-  
+  wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode", StringValue ("OfdmRate54Mbps"));
 
@@ -84,30 +90,28 @@ main (int argc, char *argv[])
   // Mobility
 
   MobilityHelper mobility;
-
   mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
-                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"),
-                                 "Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"));
+                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=1000.0]"),
+                                 "Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=1000.0]"));
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (wifiStaNodes);
-   
-
-  //Ptr<BasicEnergySource> energySource = CreateObject<BasicEnergySource>();
-  //Ptr<SimpleDeviceEnergyModel> energyModel = CreateObject<SimpleDeviceEnergyModel>();
-
-  //energySource->SetInitialEnergy (300);
-  //energyModel->SetEnergySource (energySource);
-  //energySource->AppendDeviceEnergyModel (energyModel);
-  //energyModel->SetCurrentA (20);
-
-  // aggregate energy source to node
-  //wifiApNode.Get (0)->AggregateObject (energySource);
 
   // Install internet stack
 
   InternetStackHelper stack;
-  //AodvHelper aodv;
-  //stack.SetRoutingHelper(aodv);
+  
+  if(route_protocol == "AODV"){
+    AodvHelper aodv;
+    stack.SetRoutingHelper(aodv);
+  }
+  else
+  {
+    OlsrHelper olsr;
+    stack.SetRoutingHelper(olsr);
+  }
+
+
+  
   stack.Install (allNodes);
 
   
