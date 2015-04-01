@@ -40,21 +40,56 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("WirelessAnimationExample");
 
+//NS_OBJECT_ENSURE_REGISTERED (OnOffApplication);
+
+// TypeId
+// OnOffApplication::GetTypeId (void)
+// {
+//   static TypeId tid = TypeId ("ns3::OnOffApplication")
+//     .SetParent<Application> ()
+//     .AddConstructor<OnOffApplication> ()
+//     .AddAttribute ("TotalTX",
+//                    "The maximum number of bytes sent by OnOffApplication.",
+//                    UintegerValue (0),
+//                    MakeUintegerAccessor (&OnOffApplication::m_totBytes),
+//                    MakeUintegerChecker<uint32_t> ())
+//     ;
+
+//   return tid;
+// }
+
+// uint32_t OnOffApplication::GetTotalTx()
+// {
+//   return TotalTX;
+// }
+
+OnOffApplication::OnOffApplication(){
+  m_totBytes = 0;
+}
+
 int 
 main (int argc, char *argv[])
 {
   uint32_t nWifi = 50;
   double TxPower = 1.0;
   double trafficIntesity = 0.1;
+  uint64_t dataRate = 0.0;
+  //char udpDataRate[16];
   std::string route_protocol("AODV");
   
   CommandLine cmd;
   cmd.AddValue ("nWifi", "Number of wifi STA devices", nWifi);
   cmd.AddValue("TrafficIntesity", "Demand to Bandwidth Ratio", trafficIntesity);
-  cmd.AddValue("Routing_protocol", "AODV or OLSR", route_protocol);
-  cmd.AddValue("Transmission Power", "Power in mWatts", TxPower);    
+  cmd.AddValue("Rprot", "AODV or OLSR", route_protocol);
+  cmd.AddValue("TxPower", "Power in mWatts", TxPower);    
 
   cmd.Parse (argc,argv);
+
+  dataRate = (int)((trafficIntesity*2.0*54.0)/((double)nWifi)*1000000.0);
+  
+  Config::SetDefault ("ns3::OnOffApplication::DataRate", 
+                      DataRateValue (DataRate (dataRate)));
+
   NodeContainer allNodes;
   NodeContainer wifiStaNodes;
   wifiStaNodes.Create (nWifi);
@@ -75,11 +110,6 @@ main (int argc, char *argv[])
                                 "DataMode", StringValue ("OfdmRate54Mbps"));
 
   NqosWifiMacHelper mac = NqosWifiMacHelper::Default ();
-
-  //Ssid ssid = Ssid ("ns-3-ssid"); //True source of error Found here
-  //mac.SetType ("ns3::StaWifiMac",
-    //           "Ssid", SsidValue (ssid),
-     //          "ActiveProbing", BooleanValue (false));
 
   NetDeviceContainer staDevices;
   staDevices = wifi.Install (phy, mac, wifiStaNodes);
@@ -123,22 +153,30 @@ main (int argc, char *argv[])
   staInterfaces = address.Assign (staDevices);
 
 
-  UdpEchoServerHelper echoServer (9);
-  ApplicationContainer serverApps = echoServer.Install (wifiStaNodes.Get (1));
-   serverApps.Start (Seconds (1.0));
-   serverApps.Stop (Seconds (15.0));
-   UdpEchoClientHelper echoClient (staInterfaces.GetAddress(0), 9);
-  echoClient.SetAttribute ("MaxPackets", UintegerValue (10));
-  echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.)));
-  echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
+  PacketSinkHelper udpSink ("ns3::UdpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(),9) );
+  ApplicationContainer serverApps = udpSink.Install (wifiStaNodes.Get (1));
+  serverApps.Start (Seconds (1.0));
+  serverApps.Stop (Seconds (15.0));
+
+  OnOffHelper udpClient ("ns3::UdpSocketFactory", InetSocketAddress(staInterfaces.GetAddress(1),9));
+
   
-  ApplicationContainer clientApps = echoClient.Install (wifiStaNodes);
+
+  udpClient.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.3]"));
+  udpClient.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=0.3]"));
+
+
+  //echoClient.SetAttribute ("MaxPackets", UintegerValue (10));
+  //echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.)));
+ // echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
   
-  clientApps.Start (Seconds (2.0));
+  ApplicationContainer clientApps = udpClient.Install (wifiStaNodes);
+  
+  clientApps.Start (Seconds (1.0));
   clientApps.Stop (Seconds (15.0));
 
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-  Simulator::Stop (Seconds (15.0));
+  Simulator::Stop (Seconds (10.0));
 
   AnimationInterface anim ("wireless-animation2.xml"); // Mandatory
   for (uint32_t i = 0; i < wifiStaNodes.GetN (); ++i)
@@ -154,5 +192,12 @@ main (int argc, char *argv[])
   anim.EnableWifiPhyCounters (Seconds (0), Seconds (10)); //Optional
   Simulator::Run ();
   Simulator::Destroy ();
+
+  //uint32_t bytes_sent;
+  for (uint32_t ii = 0; ii < nWifi; ii++)
+  {
+    Ptr<OnOffApplication> source1 = DynamicCast<OnOffApplication> (clientApps.Get (ii));
+    //bytes_sent += source1->TotalTX;
+  }
   return 0;
 }
