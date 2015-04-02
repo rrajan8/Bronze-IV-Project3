@@ -60,7 +60,7 @@ main (int argc, char *argv[])
   U->SetAttribute ("Min", DoubleValue (0.0));
   U->SetAttribute ("Max", DoubleValue (0.1));
 
-  uint32_t nWifi = 50;
+  uint32_t nWifi = 100;
   double TxPower = 1.0;
   double trafficIntesity = 0.1;
   uint64_t dataRate = 0.0;
@@ -80,7 +80,7 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::OnOffApplication::DataRate", 
                       DataRateValue (DataRate (dataRate)));
 
-   Config::SetDefault("ns3::OnOffApplication::MaxBytes", UintegerValue(1024));
+   //Config::SetDefault("ns3::OnOffApplication::MaxBytes", UintegerValue(1024));
 
   NodeContainer allNodes;
   NodeContainer wifiStaNodes;
@@ -90,18 +90,25 @@ main (int argc, char *argv[])
 
   YansWifiChannelHelper channel = YansWifiChannelHelper::Default ();
   YansWifiPhyHelper phy = YansWifiPhyHelper::Default ();
-  
+
+  phy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
   phy.Set("TxPowerStart", DoubleValue(10.0*log10(TxPower)));
   phy.Set("TxPowerEnd", DoubleValue(10.0*log10(TxPower)));
   
+  channel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
+  channel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel",
+                                      "Exponent", DoubleValue (3.0));
   phy.SetChannel (channel.Create ());
 
   WifiHelper wifi = WifiHelper::Default ();
   wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-                                "DataMode", StringValue ("OfdmRate54Mbps"));
+                                "DataMode", StringValue ("OfdmRate54Mbps"),
+                                "ControlMode", StringValue("OfdmRate54Mbps"));
 
   NqosWifiMacHelper mac = NqosWifiMacHelper::Default ();
+  mac.SetType ("ns3::AdhocWifiMac");
+
 
   NetDeviceContainer staDevices;
   staDevices = wifi.Install (phy, mac, wifiStaNodes);
@@ -131,6 +138,7 @@ main (int argc, char *argv[])
     OlsrHelper olsr;
     stack.SetRoutingHelper(olsr);
   }
+  stack.Install (allNodes);
 
   uint32_t *senders = new uint32_t[nWifi];
 
@@ -144,15 +152,6 @@ main (int argc, char *argv[])
     senders[j] = tmp;
   }
 
-  // for(uint32_t ii = 0; ii < nWifi; ii++)
-  // {
-  //   std::cout << ii << ":" << senders[ii] << std::endl;
-  // }
-
-  stack.Install (allNodes);
-
-  
-
   Ipv4AddressHelper address;
   address.SetBase ("10.1.1.0", "255.255.255.0");
 
@@ -163,26 +162,21 @@ main (int argc, char *argv[])
   for(uint32_t ii = 0; ii < nWifi; ii++)
   {
     PacketSinkHelper udpSink ("ns3::UdpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(),9) );
-    serverApps.Add(udpSink.Install (wifiStaNodes.Get(senders[ii])));
+    serverApps.Add(udpSink.Install (wifiStaNodes.Get(ii)));
 
 
     OnOffHelper udpClient ("ns3::UdpSocketFactory", InetSocketAddress(staInterfaces.GetAddress(senders[ii]),9));
     udpClient.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.3]"));
     udpClient.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=0.3]"));
     clientApps.Add(udpClient.Install (wifiStaNodes.Get(ii)));
-    (clientApps.Get(ii))->SetStartTime(Seconds (U->GetValue()+1.0));
+    //(clientApps.Get(ii))->SetStartTime(Seconds (U->GetValue()+2.0));
   }
 
   
   serverApps.Start (Seconds (1.0));
   serverApps.Stop (Seconds (15.0));
-
-  
-
-
-  //echoClient.SetAttribute ("MaxPackets", UintegerValue (10));
-  //echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.)));
- // echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
+  clientApps.Start(Seconds(2.0));
+  clientApps.Stop (Seconds (15.0));
 
 
   for(uint32_t ii = 0; ii < nWifi; ii++)
@@ -192,7 +186,6 @@ main (int argc, char *argv[])
   }
   
   
-  clientApps.Stop (Seconds (15.0));
 
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
   Simulator::Stop (Seconds (10.0));
@@ -216,12 +209,7 @@ main (int argc, char *argv[])
   Simulator::Destroy ();
 
   std::cout << "count: " << count << std::endl;
-  //uint32_t bytes_sent;
-  //for (uint32_t ii = 0; ii < nWifi; ii++)
-  //{
-    //Ptr<OnOffApplication> source1 = DynamicCast<OnOffApplication> (clientApps.Get (ii));
-    //bytes_sent += source1->TotalTX;
-  //}
+  
   uint64_t sumRx = 0;
   for(uint32_t ii = 0; ii < nWifi; ii++)
   {
