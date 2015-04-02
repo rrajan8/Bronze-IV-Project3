@@ -70,13 +70,13 @@ main (int argc, char *argv[])
   
   CommandLine cmd;
   cmd.AddValue ("nWifi", "Number of wifi STA devices", nWifi);
-  cmd.AddValue("TrafficIntesity", "Demand to Bandwidth Ratio", trafficIntesity);
+  cmd.AddValue("TrafficIntensity", "Demand to Bandwidth Ratio", trafficIntesity);
   cmd.AddValue("Rprot", "AODV or OLSR", route_protocol);
   cmd.AddValue("TxPower", "Power in mWatts", TxPower);    
 
   cmd.Parse (argc,argv);
 
-  dataRate = (int)((trafficIntesity*2.0*54.0)/((double)nWifi)*1000000.0);
+  dataRate = (int)((trafficIntesity*20.0*54.0)/((double)nWifi)*1000000.0);
   
   Config::SetDefault ("ns3::OnOffApplication::DataRate", 
                       DataRateValue (DataRate (dataRate)));
@@ -104,8 +104,8 @@ main (int argc, char *argv[])
   WifiHelper wifi = WifiHelper::Default ();
   wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
   //wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-                                //"DataMode", StringValue ("OfdmRate54Mbps"),
-                                //"ControlMode", StringValue("OfdmRate54Mbps"));
+  //                              "DataMode", StringValue ("OfdmRate54Mbps"),
+   //                             "ControlMode", StringValue("OfdmRate54Mbps"));
 
   NqosWifiMacHelper mac = NqosWifiMacHelper::Default ();
   mac.SetType ("ns3::AdhocWifiMac");
@@ -176,16 +176,16 @@ main (int argc, char *argv[])
 
 
     OnOffHelper udpClient ("ns3::UdpSocketFactory", InetSocketAddress(staInterfaces.GetAddress(senders[ii]),9));
-    udpClient.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.3]"));
-    udpClient.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=0.3]"));
+    udpClient.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0.2]"));
+    udpClient.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=0.01]"));
     clientApps.Add(udpClient.Install (wifiStaNodes.Get(ii)));
-    //(clientApps.Get(ii))->SetStartTime(Seconds (U->GetValue()+2.0));
+    (clientApps.Get(ii))->SetStartTime(Seconds (U->GetValue()));
   }
 
   
-  serverApps.Start (Seconds (1.0));
+  serverApps.Start (Seconds (0.0));
   serverApps.Stop (Seconds (15.0));
-  clientApps.Start(Seconds(2.0));
+  //clientApps.Start(Seconds(2.0));
   clientApps.Stop (Seconds (15.0));
 
 
@@ -218,7 +218,7 @@ main (int argc, char *argv[])
   Simulator::Run ();
   Simulator::Destroy ();
 
-  std::cout << "count: " << count << std::endl;
+  std::cout << count << ",";
   
   uint64_t sumRx = 0;
   for(uint32_t ii = 0; ii < nWifi; ii++)
@@ -228,7 +228,7 @@ main (int argc, char *argv[])
     sumRx+=sink1->GetTotalRx();
   }
 
-  std::cout << "RX:" << sumRx << std::endl;
+  std::cout << sumRx << ",";
   std::cout << (double)nWifi/(1000.0*1000.0) << "," << TxPower << "," 
   << route_protocol << "," << trafficIntesity  << "," << (double)sumRx/(double)count 
   << std::endl;
