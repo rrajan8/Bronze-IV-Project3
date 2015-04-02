@@ -10,13 +10,13 @@ txpow=(1 100 250 500) #(0.5 0.9 0.98)
 tintense=(0.1 0.3 0.6 0.9)
 rprot=('AODV' 'OLSR')
 
-
+echo 'TX,RX,Node Density,TX Power,Protocol,Traffic Intensity,Network Efficiency' > lab3data.txt
 
 for i in ${n[@]}; do
 	for j in ${txpow[@]}; do
 		for k in ${tintense[@]} ; do
 			for l in ${rprot[@]}; do
-				./waf --run 'p3 --nWifi='${i}' --TrafficIntensity='${k}' --Rprot='${l}' --TxPower='${j}''
+				./waf --run 'p3 --nWifi='${i}' --TrafficIntensity='${k}' --Rprot='${l}' --TxPower='${j}'' >> lab3data.txt
 			done
 		done
 	done
