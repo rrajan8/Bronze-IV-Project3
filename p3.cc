@@ -35,6 +35,7 @@
 
 #include <string>
  #include <math.h> 
+ #include <iostream>
 
 
 
@@ -91,20 +92,20 @@ main (int argc, char *argv[])
   YansWifiChannelHelper channel = YansWifiChannelHelper::Default ();
   YansWifiPhyHelper phy = YansWifiPhyHelper::Default ();
 
-  phy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
+  //phy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
   phy.Set("TxPowerStart", DoubleValue(10.0*log10(TxPower)));
   phy.Set("TxPowerEnd", DoubleValue(10.0*log10(TxPower)));
   
-  channel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-  channel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel",
-                                      "Exponent", DoubleValue (3.0));
+  //channel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
+  //channel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel",
+    //                                  "Exponent", DoubleValue (3.0));
   phy.SetChannel (channel.Create ());
 
   WifiHelper wifi = WifiHelper::Default ();
   wifi.SetStandard (WIFI_PHY_STANDARD_80211a);
-  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-                                "DataMode", StringValue ("OfdmRate54Mbps"),
-                                "ControlMode", StringValue("OfdmRate54Mbps"));
+  //wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                //"DataMode", StringValue ("OfdmRate54Mbps"),
+                                //"ControlMode", StringValue("OfdmRate54Mbps"));
 
   NqosWifiMacHelper mac = NqosWifiMacHelper::Default ();
   mac.SetType ("ns3::AdhocWifiMac");
@@ -132,6 +133,8 @@ main (int argc, char *argv[])
   if(route_protocol == "AODV"){
     AodvHelper aodv;
     stack.SetRoutingHelper(aodv);
+    //Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("p3.routes", std::ios::out);
+    //aodv.PrintRoutingTableAllEvery (Seconds (2), routingStream);
   }
   else
   {
@@ -153,10 +156,17 @@ main (int argc, char *argv[])
   }
 
   Ipv4AddressHelper address;
-  address.SetBase ("10.1.1.0", "255.255.255.0");
+  address.SetBase ("10.1.0.0", "255.255.0.0");
 
   Ipv4InterfaceContainer staInterfaces;
   staInterfaces = address.Assign (staDevices);
+
+  //for(uint32_t ii = 0; ii < nWifi; ii++)
+  //{
+   // staInterfaces.GetAddress(ii,0).Print(std::cout);
+   // std::cout << std::endl;
+  //}
+
   ApplicationContainer serverApps, clientApps;
 
   for(uint32_t ii = 0; ii < nWifi; ii++)
@@ -190,7 +200,7 @@ main (int argc, char *argv[])
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
   Simulator::Stop (Seconds (10.0));
 
-  AnimationInterface anim ("wireless-animation2.xml"); // Mandatory
+  /*AnimationInterface anim ("wireless-animation2.xml"); // Mandatory
   for (uint32_t i = 0; i < wifiStaNodes.GetN (); ++i)
     {
       char buffer[255];
@@ -203,7 +213,7 @@ main (int argc, char *argv[])
   anim.EnableIpv4RouteTracking ("routingtable-wireless.xml", Seconds (0), Seconds (5), Seconds (0.25)); //Optional
   anim.EnableWifiMacCounters (Seconds (0), Seconds (10)); //Optional
   anim.EnableWifiPhyCounters (Seconds (0), Seconds (10)); //Optional
-  anim.EnablePacketMetadata (); 
+  anim.EnablePacketMetadata (); */
 
   Simulator::Run ();
   Simulator::Destroy ();
@@ -214,7 +224,7 @@ main (int argc, char *argv[])
   for(uint32_t ii = 0; ii < nWifi; ii++)
   {
     Ptr<PacketSink> sink1 = DynamicCast<PacketSink> (serverApps.Get (ii));
-    std::cout << ii << ":" << sink1->GetTotalRx() << std::endl;
+    //std::cout << ii << ":" << sink1->GetTotalRx() << std::endl;
     sumRx+=sink1->GetTotalRx();
   }
 
